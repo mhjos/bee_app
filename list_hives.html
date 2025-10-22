@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bee App - Hives</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { font-size: 2em; font-weight: bold; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin: 10px 0; cursor: pointer; color: blue; text-decoration: underline; }
+        button { margin-top: 20px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+
+<h1>Hives</h1>
+<ul id="hivesList"></ul>
+
+<button onclick="logout()">Fly away</button>
+
+<script>
+const beeId = sessionStorage.getItem('bee_id');
+if (!beeId) {
+    window.location.href = '/';
+}
+
+async function listHives() {
+    try {
+        const res = await fetch('/hives'); // GET /hives must exist in Flask
+        const hives = await res.json();
+        const list = document.getElementById('hivesList');
+        list.innerHTML = '';
+
+        hives.forEach(h => {
+            const li = document.createElement('li');
+            li.textContent = h.name;  // only show the hive name
+            li.addEventListener('click', () => {
+                sessionStorage.setItem('selected_hive_id', h.id);
+                sessionStorage.setItem('selected_hive_name', h.name);
+                window.location.href = '/hive_stat';
+            });
+            list.appendChild(li);
+        });
+    } catch (err) {
+        console.error('Failed to load hives', err);
+    }
+}
+
+async function logout() {
+    await fetch('/logout', { method: 'POST' });
+    sessionStorage.clear();
+    window.location.href = '/';
+}
+
+// Load hives when page loads
+listHives();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: bee_db
+      MYSQL_USER: bee
+      MYSQL_PASSWORD: bee123
+    ports:
+      - "3306:3306"
+    networks:
+      - mynet
+
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - mynet
+    environment:
+      - FLASK_ENV=development
+
+networks:
+  mynet:
+    driver: bridge
