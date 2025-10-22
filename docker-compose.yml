@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   db:
     image: mysql:8.0
@@ -12,19 +10,34 @@ services:
       - "3306:3306"
     networks:
       - bee_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - db_data:/var/lib/mysql  # <-- persist MySQL data
 
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       FLASK_ENV: development
-      DATABASE_URL: mysql+pymysql://root:rootpassword@db/bee_db
+      DATABASE_URL: mysql+pymysql://bee:bee123@db/bee_db
     networks:
       - bee_net
+    volumes:
+      - ./templates:/app/templates  # <-- make sure your templates are available
+      - ./static:/app/static        # <-- if you have static files
+    command: flask run --host=0.0.0.0 --port=8000
 
 networks:
   bee_net:
     driver: bridge
+
+volumes:
+  db_data:  # <-- named volume to persist MySQL data

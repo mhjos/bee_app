@@ -1,24 +1,31 @@
-# Use official Python image
+# Use official Python slim image
 FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for caching
-COPY requirements.txt .
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y netcat-openbsd gcc default-libmysqlclient-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the app code
+# Copy app code
 COPY . .
 
-# Expose Flask port
-EXPOSE 5000
+# Make wait-for-db.sh executable
+RUN chmod +x wait-for-db.sh
 
-# Set environment variable
+# Expose Flask port
+EXPOSE 8000
+
+# Flask environment variables
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=8000
 
-# Run Flask
-CMD ["flask", "run"]
+# Run Flask through wait-for-db.sh
+CMD ["./wait-for-db.sh", "db", "flask", "run", "--host=0.0.0.0", "--port=8000"]
