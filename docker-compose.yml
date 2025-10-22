@@ -11,7 +11,7 @@ services:
     ports:
       - "3306:3306"
     networks:
-      - mynet
+      - bee_net
 
   web:
     build: .
@@ -19,11 +19,12 @@ services:
       - "5000:5000"
     depends_on:
       - db
-    networks:
-      - mynet
     environment:
-      - FLASK_ENV=development
+      FLASK_ENV: development
+      DATABASE_URL: mysql+pymysql://root:rootpassword@db/bee_db
+    networks:
+      - bee_net
 
 networks:
-  mynet:
+  bee_net:
     driver: bridge

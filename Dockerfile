@@ -1,21 +1,24 @@
-# --- Stage 1: Builder ---
-FROM python:3.10-slim AS builder
+# Use official Python image
+FROM python:3.10-slim
+
+# Set working directory
 WORKDIR /app
+
+# Copy requirements first for caching
 COPY requirements.txt .
-RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the app code
 COPY . .
 
-# --- Stage 2: Final ---
-FROM python:3.10-slim
-WORKDIR /app
-
-# Copy installed packages from builder
-COPY --from=builder /install /usr/local
-COPY --from=builder /app /app
-
+# Expose Flask port
 EXPOSE 5000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:5000/ || exit 1
+# Set environment variable
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
 
-CMD ["python", "app.py"]
+# Run Flask
+CMD ["flask", "run"]
