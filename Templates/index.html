@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bee App - Index</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        input, button { margin: 5px; }
+        #message { color: green; margin-top: 10px; }
+        #error { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<h2>Hey buzzing!</h2>
+<p>What's your name?</p>
+
+<input type="text" id="beeNameInput" placeholder="Enter bee name">
+<button onclick="loginOrCreate()">Enter</button>
+
+<div id="message"></div>
+<div id="error"></div>
+
+<script>
+async function loginOrCreate() {
+    const name = document.getElementById('beeNameInput').value.trim();
+    if (!name) {
+        document.getElementById('error').innerText = 'Please enter a bee name';
+        return;
+    }
+
+    // First try to log in
+    let res = await fetch('/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name})
+    });
+    let data = await res.json();
+
+    if (!res.ok && data.error === "Bee not found") {
+        // If bee doesn't exist, create one
+        res = await fetch('/create_bee', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name})
+        });
+        data = await res.json();
+    }
+
+    if (res.ok) {
+        // Save bee info in sessionStorage for use in bee_stat.html
+        sessionStorage.setItem('bee_id', data.bee.id);
+        sessionStorage.setItem('bee_name', data.bee.name);
+        sessionStorage.setItem('bee_pollen', data.bee.pollen);
+
+        // Redirect to bee_stat page
+        window.location.href = '/bee_stat';
+    } else {
+        document.getElementById('error').innerText = data.error || 'Unknown error';
+    }
+}
+</script>
+
+</body>
+</html>

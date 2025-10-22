@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bee App - Hive Stats</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { font-size: 2em; font-weight: bold; }
+        button { margin-top: 10px; padding: 10px 20px; font-size: 1em; display: block; }
+        #message { color: green; margin-top: 10px; }
+        #error { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<h1 id="hiveNameHeader"></h1>
+<p>Honey: <span id="hiveHoney">0</span></p>
+<p>Pollen: <span id="beePollen">0</span></p>
+
+<button onclick="deliverPollen()">Deliver Pollen</button>
+<button onclick="leaveHive()">Leave Hive</button>
+<button onclick="logout()">Fly away</button>
+
+<div id="message"></div>
+<div id="error"></div>
+
+<script>
+let hiveId = sessionStorage.getItem('selected_hive_id');
+let hiveName = sessionStorage.getItem('selected_hive_name');
+let beeId = sessionStorage.getItem('bee_id');
+let beePollen = parseInt(sessionStorage.getItem('bee_pollen') || 0);
+
+if (!hiveId || !beeId) {
+    // No hive selected or bee not logged in
+    window.location.href = '/bee_stat';
+} else {
+    document.getElementById('hiveNameHeader').innerText = hiveName;
+    document.getElementById('beePollen').innerText = beePollen;
+
+    // Fetch current honey from API
+    fetch(`/hives/${hiveId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.honey !== undefined) {
+                document.getElementById('hiveHoney').innerText = data.honey;
+            } else {
+                document.getElementById('error').innerText = 'Failed to get hive data.';
+            }
+        })
+        .catch(err => {
+            document.getElementById('error').innerText = 'Error fetching hive data.';
+        });
+}
+
+// Deliver 5 pollen for 1 honey
+async function deliverPollen() {
+    if (beePollen < 5) {
+        document.getElementById('error').innerText = 'Not enough pollen to deliver!';
+        document.getElementById('message').innerText = '';
+        return;
+    }
+
+    // Deduct 5 pollen from bee
+    const resBee = await fetch(`/bees/${beeId}/deduct_pollen`, {
+        method: 'POST',
+        body: JSON.stringify({amount: 5}),
+        headers: {'Content-Type': 'application/json'}
+    });
+
+    if (!resBee.ok) {
+        const data = await resBee.json();
+        document.getElementById('error').innerText = data.error || 'Failed to deduct pollen';
+        return;
+    }
+
+    // Add 1 honey to hive
+    const resHive = await fetch(`/hives/${hiveId}/add_honey`, {
+        method: 'POST',
+        body: JSON.stringify({amount: 1}),
+        headers: {'Content-Type': 'application/json'}
+    });
+
+    if (!resHive.ok) {
+        document.getElementById('error').innerText = 'Failed to add honey.';
+        return;
+    }
+
+    // Update UI
+    const beeData = await resBee.json();
+    beePollen = beeData.pollen;
+    sessionStorage.setItem('bee_pollen', beePollen);
+    document.getElementById('beePollen').innerText = beePollen;
+
+    const hiveData = await resHive.json();
+    document.getElementById('hiveHoney').innerText = hiveData.honey;
+
+    document.getElementById('message').innerText = 'Delivered 5 pollen and gained 1 honey!';
+    document.getElementById('error').innerText = '';
+}
+
+// Leave hive
+function leaveHive() {
+    window.location.href = '/bee_stat';
+}
+
+// Log out
+async function logout() {
+    await fetch('/logout', { method: 'POST' });
+    sessionStorage.clear();
+    window.location.href = '/';
+}
+</script>
+
+</body>
+</html>
