@@ -3,6 +3,9 @@ from config import Config
 from models import db
 from routes import init_routes
 
+import time
+import pymysql
+
 app = Flask(__name__)
 app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY  # make sure you have a secret key set
@@ -10,9 +13,24 @@ app.secret_key = Config.SECRET_KEY  # make sure you have a secret key set
 # Initialize database
 db.init_app(app)
 
-# Create tables (Hive + Bee)
+# Retry connecting to DB
 with app.app_context():
-    db.create_all()
+    retries = 10
+    while retries > 0:
+        try:
+            db.create_all()
+            print("Database connected!")
+            break
+        except pymysql.err.OperationalError:
+            print("Waiting for DB...")
+            time.sleep(3)
+            retries -= 1
+    else:
+        raise Exception("Cannot connect to the database")
+
+# # Create tables (Hive + Bee)
+# with app.app_context():
+#     db.create_all()
 
 # Initialize API routes
 init_routes(app)
