@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bee App - Bee Stats</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #fff8dc; /* light honey background */
+    }
+
+    h1 {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #ffb300;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    p {
+        font-size: 1.3em;
+        color: #555;
+        margin-bottom: 40px;
+        text-align: center;
+    }
+
+    span {
+        font-weight: bold;
+        color: #333;
+    }
+
+    button {
+        margin: 10px;
+        padding: 12px 30px;
+        font-size: 1.1em;
+        background-color: #ffb300;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover {
+        background-color: #ffa000;
+        transform: scale(1.05);
+    }
+
+    /* Modal styling */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.4);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background-color: #fffef5;
+        padding: 25px 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        text-align: center;
+        width: 300px;
+    }
+
+    .modal-content h3 {
+        color: #ffb300;
+        margin-bottom: 15px;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 22px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    li {
+        margin: 10px 0;
+        padding: 8px;
+        border-radius: 8px;
+        background-color: #fff2b2;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    li:hover {
+        background-color: #ffe066;
+    }
+
+    li.bloodthorn:hover {
+        background-color: #b93030 !important;
+        color: black !important;
+    }
+
+</style>
+</head>
+<body>
+
+<h1 id="beeNameHeader"></h1>
+<p>Pollen: <span id="beePollen"></span></p>
+
+<div>
+    <button onclick="showHivesModal()">Go to a Hive</button>
+    <button onclick="logout()">Fly Away</button>
+</div>
+
+<!-- Modal -->
+<div id="hivesModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeHivesModal()">&times;</span>
+        <h3>Select a Hive</h3>
+        <ul id="hivesList"></ul>
+    </div>
+</div>
+
+<script>
+let beeId = sessionStorage.getItem('bee_id');
+let beeName = sessionStorage.getItem('bee_name');
+let beePollen = sessionStorage.getItem('bee_pollen');
+
+if (!beeId) {
+    window.location.href = '/';
+} else {
+    document.getElementById('beeNameHeader').innerText = `${beeName} the Bee`;
+    document.getElementById('beePollen').innerText = beePollen;
+}
+
+// ---- Hives modal ----
+function showHivesModal() {
+    const modal = document.getElementById('hivesModal');
+    modal.style.display = 'flex';
+    loadHives();
+}
+
+function closeHivesModal() {
+    document.getElementById('hivesModal').style.display = 'none';
+}
+
+// Load hives into modal
+async function loadHives() {
+    const res = await fetch('/hives');
+    const hives = await res.json();
+    const list = document.getElementById('hivesList');
+    list.innerHTML = '';
+
+    hives.forEach(h => {
+        const li = document.createElement('li');
+        li.innerText = h.name;
+
+        // Special hover style for Bloodthorn Hive
+        if (h.name === "Bloodthorn Hive") {
+            li.classList.add('bloodthorn');
+        }
+
+        li.onclick = () => {
+            sessionStorage.setItem('selected_hive_id', h.id);
+            sessionStorage.setItem('selected_hive_name', h.name);
+            window.location.href = '/hive_stat';
+        };
+        list.appendChild(li);
+    });
+}
+
+
+// ---- Log out ----
+async function logout() {
+    await fetch('/logout', { method: 'POST' });
+    sessionStorage.clear();
+    window.location.href = '/';
+}
+
+// ---- Close modal if clicked outside ----
+window.onclick = function(event) {
+    const modal = document.getElementById('hivesModal');
+    if (event.target === modal) {
+        closeHivesModal();
+    }
+}
+</script>
+
+</body>
+</html>

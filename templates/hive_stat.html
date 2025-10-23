@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bee App - Hive Stats</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #fff8dc; /* light honey background */
+            transition: background-color 0.5s;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #ffb300;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .counters {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .counter {
+            font-size: 1.3em;
+            color: #555;
+            text-align: center;
+        }
+
+        .counter span {
+            font-weight: bold;
+            color: #333;
+        }
+
+        button {
+            margin: 10px;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            border: none;
+        }
+
+        /* Deliver Pollen button - white with golden text */
+        #deliverButton {
+        background-color: white;
+        color: #ffb300;
+        font-weight: bold;
+        box-shadow: 0 2px 5px rgba(255, 179, 0, 0.4);
+        transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+        }
+
+        #deliverButton:hover {
+        background-color: #fff3cc; /* very light honey color */
+        color: #ff9900;            /* darker golden text */
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(255, 179, 0, 0.6); /* glowing effect */
+        }
+        
+        /* Other buttons - golden */
+        .secondary-btn {
+            background-color: #ffb300;
+            color: white;
+        }
+        .secondary-btn:hover {
+            background-color: #ffa000;
+            transform: scale(1.05);
+        }
+
+        #message {
+            color: green;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        #error {
+            color: red;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1 id="hiveNameHeader"></h1>
+
+<!-- Honey & Pollen counters side by side -->
+<div class="counters">
+    <div class="counter">Honey: <span id="hiveHoney">0</span></div>
+    <div class="counter">Pollen: <span id="beePollen">0</span></div>
+</div>
+
+<!-- Deliver Pollen button above the other buttons -->
+<button id="deliverButton" onclick="deliverPollen()">Deliver Pollen</button>
+
+<div>
+    <button class="secondary-btn" onclick="leaveHive()">Leave Hive</button>
+    <button class="secondary-btn" onclick="logout()">Fly Away</button>
+</div>
+
+<div id="message"></div>
+<div id="error"></div>
+
+<script>
+let hiveId = sessionStorage.getItem('selected_hive_id');
+let hiveName = sessionStorage.getItem('selected_hive_name');
+let beeId = sessionStorage.getItem('bee_id');
+let beePollen = parseInt(sessionStorage.getItem('bee_pollen') || 0);
+
+if (!hiveId || !beeId) {
+    window.location.href = '/bee_stat';
+} else {
+    document.getElementById('hiveNameHeader').innerText = hiveName;
+    document.getElementById('beePollen').innerText = beePollen;
+
+    fetch(`/hives/${hiveId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.honey !== undefined) {
+                document.getElementById('hiveHoney').innerText = data.honey;
+            } else {
+                document.getElementById('error').innerText = 'Failed to get hive data.';
+            }
+        })
+        .catch(err => {
+            document.getElementById('error').innerText = 'Error fetching hive data.';
+        });
+}
+
+// Set dynamic background color based on hive name
+if (hiveName === "Bloodthorn Hive") {
+    document.body.style.backgroundColor = "#b93030"; // red
+    document.getElementById('hiveNameHeader').style.color = "black";
+    document.querySelectorAll('.counter').forEach(el => el.style.color = "black");
+    document.querySelectorAll('#deliverButton, .secondary-btn').forEach(btn => {
+        btn.style.backgroundColor = "#fff";       // white buttons
+        btn.style.color = "#b93030";              // red text
+    });
+}
+
+
+
+async function deliverPollen() {
+    if (beePollen < 5) {
+        document.getElementById('error').innerText = 'Not enough pollen to deliver!';
+        document.getElementById('message').innerText = '';
+        return;
+    }
+
+    const resBee = await fetch(`/bees/${beeId}/deduct_pollen`, {
+        method: 'POST',
+        body: JSON.stringify({amount: 5}),
+        headers: {'Content-Type': 'application/json'}
+    });
+
+    if (!resBee.ok) {
+        const data = await resBee.json();
+        document.getElementById('error').innerText = data.error || 'Failed to deduct pollen';
+        return;
+    }
+
+    const resHive = await fetch(`/hives/${hiveId}/add_honey`, {
+        method: 'POST',
+        body: JSON.stringify({amount: 1}),
+        headers: {'Content-Type': 'application/json'}
+    });
+
+    if (!resHive.ok) {
+        document.getElementById('error').innerText = 'Failed to add honey.';
+        return;
+    }
+
+    const beeData = await resBee.json();
+    beePollen = beeData.pollen;
+    sessionStorage.setItem('bee_pollen', beePollen);
+    document.getElementById('beePollen').innerText = beePollen;
+
+    const hiveData = await resHive.json();
+    document.getElementById('hiveHoney').innerText = hiveData.honey;
+
+    document.getElementById('message').innerText = 'Delivered 5 pollen and gained 1 honey!';
+    document.getElementById('error').innerText = '';
+}
+
+function leaveHive() {
+    window.location.href = '/bee_stat';
+}
+
+async function logout() {
+    await fetch('/logout', { method: 'POST' });
+    sessionStorage.clear();
+    window.location.href = '/';
+}
+</script>
+
+</body>
+</html>
