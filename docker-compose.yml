@@ -16,28 +16,33 @@ services:
       retries: 10
       start_period: 10s
     volumes:
-      - db_data:/var/lib/mysql  # <-- persist MySQL data
+      - bee_app_db_data:/var/lib/mysql
+    deploy:
+      restart_policy:
+        condition: on-failure
+      replicas: 1
 
   web:
-    build: .
+    image: bee_app:latest
     ports:
       - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      FLASK_ENV: development
-      DATABASE_URL: mysql+pymysql://bee:bee123@db/bee_db
     networks:
       - bee_net
     volumes:
-      - ./templates:/app/templates  # <-- make sure your templates are available
-      - ./static:/app/static        # <-- if you have static files
+      - ./templates:/app/templates
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: mysql+pymysql://bee:bee123@db/bee_db
     command: flask run --host=0.0.0.0 --port=8000
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
 
 networks:
   bee_net:
-    driver: bridge
+    driver: overlay
 
 volumes:
-  db_data:  # <-- named volume to persist MySQL data
+  bee_app_db_data:
+    external: true
